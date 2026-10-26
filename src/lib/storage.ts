@@ -230,8 +230,14 @@ export function validateBackup(input: unknown): AppData {
   });
   const preferences = object(root.preferences, "data.preferences", [
     "reducedMotion",
+    "motionOverride",
   ]);
   bool(preferences.reducedMotion, "data.preferences.reducedMotion");
+  if ("motionOverride" in preferences)
+    choice(preferences.motionOverride, "data.preferences.motionOverride", [
+      "full",
+      "reduced",
+    ]);
   if (root.session !== null) {
     const path = "data.session";
     const session = object(root.session, path, [

@@ -2,21 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUpRight, Plus, Sparkle } from "lucide-react";
 import type { AppData } from "../lib/types";
 import { wordIsDue } from "../lib/stats";
+import { orbitPose } from "../lib/orbit";
 interface Props {
   data: AppData;
   reduced: boolean;
   onImport: () => void;
   onPractice: () => void;
+  onEnableMotion: () => void;
 }
-const positions = [
-  { x: -156, y: -46, z: 95, r: -13 },
-  { x: 95, y: -128, z: -20, r: 12 },
-  { x: 194, y: 26, z: 45, r: 17 },
-  { x: 1, y: 132, z: 110, r: -5 },
-  { x: -229, y: 105, z: -70, r: -19 },
-  { x: -56, y: -174, z: -110, r: 8 },
-];
-export default function Orbit({ data, reduced, onImport, onPractice }: Props) {
+export default function Orbit({
+  data,
+  reduced,
+  onImport,
+  onPractice,
+  onEnableMotion,
+}: Props) {
   const ref = useRef<HTMLElement>(null);
   const [progress, setProgress] = useState(0);
   useEffect(() => {
@@ -57,6 +57,7 @@ export default function Orbit({ data, reduced, onImport, onPractice }: Props) {
   const cards = data.words.slice(0, 6);
   const amount = cards.length || 6;
   const p = reduced ? 0 : progress;
+  const assembly = orbitPose(0, p).assembly;
   const due = data.words.filter((w) => wordIsDue(w, Date.now())).length;
   return (
     <section
@@ -98,7 +99,17 @@ export default function Orbit({ data, reduced, onImport, onPractice }: Props) {
               </button>
             )}
           </div>
-          {reduced && <p className="motion-note" role="status">Qurilma yoki yordamchi menyuda animatsiyani kamaytirish yoqilgan. Shu sabab orbita statik ko‘rsatilmoqda.</p>}
+          {reduced && (
+            <div className="motion-note" role="status">
+              <p>
+                Animatsiyani kamaytirish yoqilgan. Shu sabab orbita statik
+                ko‘rsatilmoqda.
+              </p>
+              <button className="text-button green" onClick={onEnableMotion}>
+                To‘liq animatsiyani yoqish <ArrowUpRight size={14} />
+              </button>
+            </div>
+          )}
           <div className="hero-meta">
             <span>
               <i className="tiny-square" /> {data.words.length} ta so‘z
@@ -120,8 +131,20 @@ export default function Orbit({ data, reduced, onImport, onPractice }: Props) {
             <span>01 — ∞</span>
           </div>
           <div className="orbit-perspective">
-            <div className="orbital-ring ring-one" style={{ opacity: 1 - p }} />
-            <div className="orbital-ring ring-two" style={{ opacity: 1 - p }} />
+            <div
+              className="orbital-ring ring-one"
+              style={{
+                opacity: 1 - assembly,
+                transform: `rotateX(66deg) rotateY(${-18 + p * 100}deg)`,
+              }}
+            />
+            <div
+              className="orbital-ring ring-two"
+              style={{
+                opacity: 1 - assembly,
+                transform: `rotateY(68deg) rotateX(${28 + p * 80}deg)`,
+              }}
+            />
             <div className="orbit-axis" style={{ opacity: 1 - p }} />
             <div
               className="orbit-core"
@@ -138,14 +161,14 @@ export default function Orbit({ data, reduced, onImport, onPractice }: Props) {
               style={{ transform: `rotateY(${p * 40}deg)` }}
             >
               {Array.from({ length: amount }, (_, i) => {
-                const pos = positions[i];
+                const pose = orbitPose(i, p);
                 const word = cards[i];
                 return (
                   <div
                     className={`orbit-card ${word ? "has-word" : ""} orbit-card-${i}`}
                     key={word?.id ?? i}
                     style={{
-                      transform: `translate3d(${pos.x * (1 - p) + ((i % 3) - 1) * 151 * p}px, ${pos.y * (1 - p) + (Math.floor(i / 3) - 0.5) * 110 * p}px, ${pos.z * (1 - p)}px) rotateY(${(-18 + i * 8) * (1 - p) - 40 * p}deg) rotateZ(${pos.r * (1 - p)}deg)`,
+                      transform: `translate3d(${pose.x}px, ${pose.y}px, ${pose.z}px) rotateY(${pose.rotateY}deg) rotateZ(${pose.rotateZ}deg)`,
                       opacity: i >= 4 && p > 0.5 ? 1 - (p - 0.5) * 0.25 : 1,
                     }}
                   >

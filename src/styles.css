@@ -3187,29 +3187,28 @@ kbd {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  html {
+  html:not([data-motion="full"]) {
     scroll-behavior: auto;
   }
-  *,
-  *:before,
-  *:after {
+  html:not([data-motion="full"]) *,
+  html:not([data-motion="full"]) *:before,
+  html:not([data-motion="full"]) *:after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .orbit-section,
-  .orbit-static {
+  html:not([data-motion="full"]) .orbit-section,
+  html:not([data-motion="full"]) .orbit-static {
     height: auto !important;
     min-height: 0 !important;
   }
-  .orbit-sticky,
-  .orbit-section:not(.orbit-static) .orbit-sticky {
+  html:not([data-motion="full"]) .orbit-sticky {
     position: relative !important;
     top: 0 !important;
   }
-  .orbit-cards,
-  .orbit-card {
+  html:not([data-motion="full"]) .orbit-cards,
+  html:not([data-motion="full"]) .orbit-card {
     will-change: auto !important;
   }
 }
@@ -3296,4 +3295,10 @@ kbd {
     padding: 14px;
   }
 }
-.motion-note{max-width:340px;margin-top:18px;font-size:11px;line-height:1.7;color:#b5c7a0}
+.motion-note {
+  max-width: 340px;
+  margin-top: 18px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #b5c7a0;
+}

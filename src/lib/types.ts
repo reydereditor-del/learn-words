@@ -68,7 +68,7 @@ export interface AppData {
   words: Word[];
   history: HistoryEntry[];
   session: PracticeSession | null;
-  preferences: { reducedMotion: boolean };
+  preferences: { reducedMotion: boolean; motionOverride?: "full" | "reduced" };
 }
 export const LEVELS: Level[] = ["A1", "A1.2", "A2", "B1", "B2"];
 export const LANGUAGE_NAMES: Record<Language, string> = {

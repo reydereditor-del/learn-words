@@ -29,6 +29,7 @@ import {
 import { createSession, selectWords } from "./lib/study";
 import { isClozeEligible } from "./lib/import";
 import { wordIsDue, wordIsNew } from "./lib/stats";
+import { shouldReduceMotion } from "./lib/motion";
 import Orbit from "./components/Orbit";
 import Modal from "./components/Modal";
 import ImportDialog from "./components/ImportDialog";
@@ -206,7 +207,16 @@ export default function App() {
     }
     if (fileRef.current) fileRef.current.value = "";
   }
-  const reduced = osReduced || !!data?.preferences.reducedMotion;
+  const reduced = data
+    ? shouldReduceMotion(data.preferences, osReduced)
+    : osReduced;
+  const fullMotion = data?.preferences.motionOverride === "full";
+  useEffect(() => {
+    document.documentElement.dataset.motion = fullMotion ? "full" : "system";
+    return () => {
+      delete document.documentElement.dataset.motion;
+    };
+  }, [fullMotion]);
   if (!data)
     return (
       <main className="loading-screen">
@@ -298,13 +308,14 @@ export default function App() {
                   <span>Animatsiyani kamaytirish</span>
                   <input
                     type="checkbox"
-                    checked={data.preferences.reducedMotion}
+                    checked={reduced}
                     onChange={(e) => {
                       void commit({
                         ...data,
                         preferences: {
                           ...data.preferences,
                           reducedMotion: e.target.checked,
+                          motionOverride: e.target.checked ? "reduced" : "full",
                         },
                       });
                     }}
@@ -312,8 +323,22 @@ export default function App() {
                 </label>
                 {osReduced && (
                   <p className="field-help">
-                    Qurilmangizda kamaytirilgan animatsiya yoqilgan.
+                    Qurilmangiz harakatni kamaytirishni so‘ragan. Saytdagi
+                    tanlovingiz bundan ustun ishlaydi.
                   </p>
+                )}
+                {(data.preferences.motionOverride ||
+                  data.preferences.reducedMotion) && (
+                  <button
+                    onClick={() =>
+                      void commit({
+                        ...data,
+                        preferences: { reducedMotion: false },
+                      })
+                    }
+                  >
+                    Qurilma sozlamasiga qaytish
+                  </button>
                 )}
                 <p className="menu-footnote">
                   Ma’lumot qurilmalar orasida avtomatik sinxronlashmaydi.
@@ -368,6 +393,12 @@ export default function App() {
           <Orbit
             data={data}
             reduced={reduced}
+            onEnableMotion={() =>
+              void commit({
+                ...data,
+                preferences: { reducedMotion: false, motionOverride: "full" },
+              })
+            }
             onImport={() => setDialog("import")}
             onPractice={() => requestPractice()}
           />

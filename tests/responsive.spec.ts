@@ -235,3 +235,58 @@ test("scroll changes actual 3D cards, collects them, and reverses to the origina
     .toBe(initial);
   await expect(group).toHaveAttribute("style", initialGroup!);
 });
+
+test("user can enable and persist real scroll animation despite OS reduced motion", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await ready(page);
+  await expect(page.locator(".orbit-section")).toHaveClass(/orbit-static/);
+  await page.getByRole("button", { name: "Yordamchi menyu" }).click();
+  const reduced = page.getByRole("checkbox", {
+    name: "Animatsiyani kamaytirish",
+  });
+  await expect(reduced).toBeChecked();
+  await reduced.click();
+  await expect(reduced).not.toBeChecked();
+  await expect(page.locator("html")).toHaveAttribute("data-motion", "full");
+  await expect(page.locator(".orbit-section")).not.toHaveClass(/orbit-static/);
+  expect(
+    await page
+      .locator(".orbit-sticky")
+      .evaluate((el) => getComputedStyle(el).position),
+  ).toBe("sticky");
+  await page.keyboard.press("Escape");
+  const initial = await page.locator(".orbit-card-0").getAttribute("style");
+  await page.evaluate(() => window.scrollTo({ top: 250, behavior: "instant" }));
+  await expect
+    .poll(() => page.locator(".orbit-card-0").getAttribute("style"))
+    .not.toBe(initial);
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-motion", "full");
+  await expect(page.locator(".orbit-section")).not.toHaveClass(/orbit-static/);
+  await page.getByRole("button", { name: "Yordamchi menyu" }).click();
+  await expect(reduced).not.toBeChecked();
+  await page
+    .getByRole("button", { name: "Qurilma sozlamasiga qaytish" })
+    .click();
+  await expect(reduced).toBeChecked();
+  await expect(page.locator(".orbit-section")).toHaveClass(/orbit-static/);
+});
+
+test("visible static-orbit notice can directly enable full animation", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await ready(page);
+  await page
+    .getByRole("button", { name: "To‘liq animatsiyani yoqish" })
+    .click();
+  await expect(page.locator("html")).toHaveAttribute("data-motion", "full");
+  await expect(page.locator(".motion-note")).toHaveCount(0);
+  expect(
+    await page
+      .locator(".orbit-sticky")
+      .evaluate((el) => getComputedStyle(el).position),
+  ).toBe("sticky");
+});
