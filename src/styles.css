@@ -3368,3 +3368,10 @@ kbd {
     opacity: 1;
   }
 }
+.library-toolbar {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.filter-tabs {
+  flex-wrap: wrap;
+}

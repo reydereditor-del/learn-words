@@ -122,7 +122,7 @@ describe("answer checking", () => {
     ).toBe(false);
   });
 
-  it("distinguishes missing or wrong German articles from capitalization", () => {
+  it("rejects missing or wrong German articles while accepting capitalization differences", () => {
     expect(checkAnswer("Tisch", noun, "translation", "de")).toMatchObject({
       correct: false,
       kind: "article",
@@ -133,12 +133,12 @@ describe("answer checking", () => {
       kind: "article",
     });
     expect(checkAnswer("der tisch", noun, "translation", "de")).toMatchObject({
-      correct: false,
-      kind: "capitalization",
+      correct: true,
+      kind: "correct",
     });
     expect(checkAnswer("Der Tisch", noun, "translation", "de")).toMatchObject({
-      correct: false,
-      kind: "capitalization",
+      correct: true,
+      kind: "correct",
     });
     expect(checkAnswer("der Tish", noun, "translation", "de")).toMatchObject({
       correct: false,

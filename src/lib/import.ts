@@ -1,4 +1,4 @@
-import { emptySchedule, id, LANGUAGE_NAMES, LEVELS } from "./types";
+import { emptySchedule, id, isLanguage, LANGUAGE_NAMES, LEVELS } from "./types";
 import type { AppData, Language, Level, Word, WordContent } from "./types";
 
 export interface ImportRow {
@@ -232,8 +232,8 @@ export function parseImport(
     throw new Error("Import ildizi JSON obyekt bo‘lishi kerak.");
   if (parsed.schemaVersion !== 1)
     throw new Error("Qo‘llab-quvvatlanadigan schemaVersion: 1.");
-  if (parsed.language !== "de" && parsed.language !== "en")
-    throw new Error('language faqat "de" yoki "en" bo‘lishi kerak.');
+  if (!isLanguage(parsed.language))
+    throw new Error('language faqat "de", "en" yoki "ru" bo‘lishi kerak.');
   if (parsed.language !== expected.language)
     throw new Error(
       "JSON tili tanlangan tilga mos emas. Tilni yoki JSON’ni tuzating.",
@@ -324,10 +324,7 @@ export function applyImport(
 ): AppData {
   const title = document.title.trim();
   if (!title) throw new Error("To‘plam nomini yozing.");
-  if (
-    !LEVELS.includes(document.level) ||
-    !["de", "en"].includes(document.language)
-  )
+  if (!LEVELS.includes(document.level) || !isLanguage(document.language))
     throw new Error("Til yoki daraja noto‘g‘ri.");
   const rows = validateRows(document.rows, document.language, data);
   if (!rows.length) throw new Error("Import qilish uchun so‘zlar yo‘q.");
@@ -418,16 +415,22 @@ export function buildPrompt(
   level: Level,
   title: string,
 ): string {
+  const spellingRule =
+    language === "de"
+      ? "Nemischa otlarni der, die yoki das artikli bilan va odatiy bosh harfda yoz."
+      : language === "ru"
+        ? "Ruscha so‘z va gaplarni kirill yozuvida yoz. ё va е ni o‘zboshimchalik bilan almashtirma; nemischa artikllarni qo‘shma."
+        : "Inglizcha so‘z va gaplarni tabiiy inglizcha imloda yoz; nemischa artikllarni qo‘shma.";
   return `Men bergan so‘zlar ro‘yxati yoki PDF’dagi so‘zlarni ${LANGUAGE_NAMES[language].toLowerCase()} tilida, ${level} darajasida o‘rganish uchun JSON’ga aylantir. To‘plam nomi: ${JSON.stringify(title.trim() || "Mening so‘zlarim")}.
 
 Qoidalar:
 - Faqat men bergan so‘zlarni qayta ishla; boshqa so‘zlarni lug‘atga qo‘shma.
-- Nemischa otlarni der, die yoki das artikli bilan yoz; inglizcha otlarga nemischa artikl qo‘shma.
+- ${spellingRule}
 - Tarjimalarni aniq o‘zbekcha yoz. Bir xil yozilgan turli ma’nolarni alohida obyektlarda ber.
 - Gaplar tanlangan ${level} darajasiga mos, tabiiy va qisqa bo‘lsin.
 - clozeText ichida aynan bitta {{blank}} bo‘lsin. Bu aniq bo‘shliq belgisi; boshqa qismlarni yashirma.
 - clozeAnswers ichida aynan shu gap bo‘shlig‘iga grammatik jihatdan mos shaklni ber. U word dagi lug‘at shaklidan farq qilishi mumkin.
-- acceptedAnswers ichiga faqat tarjima savoli uchun haqiqiy mos javoblarni kirit. Nemischa artikl, umlaut, ß va bosh harflarni saqla.
+- acceptedAnswers ichiga faqat tarjima savoli uchun haqiqiy mos javoblarni kirit. So‘zning to‘g‘ri imlosini saqla. Ilova katta-kichik harfni farqlamaydi; faqat harf kattaligi farq qiladigan takroriy variantlarni qo‘shma. Artikl, umlaut, ß va ё kabi boshqa harf farqlari saqlanadi.
 - Noaniq yoki o‘qilmagan so‘zlarni to‘qima. Ishonchli gap tuza olmasang gapga oid barcha ixtiyoriy maydonlarni qoldir.
 - Faqat JSON qaytar. Izoh, Markdown yoki kod bloki qo‘shma.
 - word va translation majburiy, qolgan so‘z maydonlari ixtiyoriy. acceptedAnswers berilmasa word javob hisoblanadi.

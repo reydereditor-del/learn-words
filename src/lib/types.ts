@@ -1,4 +1,8 @@
-export type Language = "de" | "en";
+export const LANGUAGES = ["de", "en", "ru"] as const;
+export type Language = (typeof LANGUAGES)[number];
+export function isLanguage(value: unknown): value is Language {
+  return typeof value === "string" && LANGUAGES.includes(value as Language);
+}
 export type Level = "A1" | "A1.2" | "A2" | "B1" | "B2";
 export type StudyMode = "translation" | "cloze";
 export interface Schedule {
@@ -74,6 +78,7 @@ export const LEVELS: Level[] = ["A1", "A1.2", "A2", "B1", "B2"];
 export const LANGUAGE_NAMES: Record<Language, string> = {
   de: "Nemischa",
   en: "Inglizcha",
+  ru: "Ruscha",
 };
 export function emptySchedule(): Schedule {
   return { stage: 0, dueAt: null, attempts: 0, lastReviewedAt: null };

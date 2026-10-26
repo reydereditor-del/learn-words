@@ -255,12 +255,6 @@ for (const scenario of [
     message: "Artikl noto‘g‘ri",
   },
   {
-    label: "capitalization",
-    word: table,
-    answer: "der tisch",
-    message: "Bosh yoki kichik harf xatosi",
-  },
-  {
     label: "umlaut",
     word: {
       word: "schön",
@@ -840,3 +834,219 @@ for (const fallback of ["unsupported", "reduced"] as const) {
     ).toBe(false);
   });
 }
+
+for (const typed of ["die informatik", "DIE INFORMATIK"]) {
+  test(`German ${typed} is accepted and scheduled as an independent correct answer`, async ({
+    page,
+  }) => {
+    await importWords(page, [
+      {
+        word: "die Informatik",
+        translation: "informatika",
+        partOfSpeech: "noun",
+        acceptedAnswers: ["die Informatik"],
+      },
+    ]);
+    await start(page);
+    await answer(page, typed);
+    await expect(page.locator("#answer-feedback")).toContainText(
+      "To‘g‘ri javob!",
+    );
+    const data = await stored(page);
+    expect(data.history[0].correct).toBe(true);
+    expect(data.words[0].word).toBe("die Informatik");
+    expect(data.words[0].schedules.translation.stage).toBe(1);
+    await next(page);
+    await expect(
+      page.getByRole("heading", { name: "Yana bir qadam oldinga." }),
+    ).toBeVisible();
+  });
+}
+
+for (const fixture of [
+  {
+    code: "ru",
+    name: "Ruscha",
+    word: "идти",
+    answer: "ИДТИ",
+    cloze: "ИДЁТ",
+    sentence: "Он идёт домой.",
+    translation: "U uyga boryapti.",
+    text: "Он {{blank}} домой.",
+  },
+  {
+    code: "en",
+    name: "Inglizcha",
+    word: "go",
+    answer: "GO",
+    cloze: "WENT",
+    sentence: "He went home.",
+    translation: "U uyga bordi.",
+    text: "He {{blank}} home.",
+  },
+]) {
+  test(`${fixture.name} imports, filters, practices inflected sentences and round-trips a backup`, async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Import", exact: true }).click();
+    let dialog = page.getByRole("dialog");
+    await dialog
+      .getByRole("combobox", { name: "Til", exact: true })
+      .selectOption(fixture.code);
+    await dialog
+      .getByRole("textbox", { name: "JSON matni", exact: true })
+      .fill(
+        JSON.stringify({
+          schemaVersion: 1,
+          language: fixture.code,
+          level: "A1.2",
+          title: fixture.name,
+          words: [
+            {
+              word: fixture.word,
+              translation: "bormoq",
+              sentence: fixture.sentence,
+              sentenceTranslation: fixture.translation,
+              clozeText: fixture.text,
+              clozeAnswers: [fixture.cloze.toLowerCase()],
+            },
+          ],
+        }),
+      );
+    await dialog
+      .getByRole("button", { name: "Tekshirish", exact: true })
+      .click();
+    await dialog
+      .getByRole("button", { name: "To‘plamni saqlash", exact: true })
+      .click();
+    await expect(dialog).toBeHidden();
+    await page
+      .locator(".filter-tabs")
+      .getByRole("button", { name: new RegExp("^" + fixture.name) })
+      .click();
+    await expect(page.locator(".collection-card")).toContainText(fixture.name);
+    await expect(page.locator(".language-chip")).toContainText(
+      fixture.code.toUpperCase(),
+    );
+    await start(page);
+    await answer(page, fixture.answer);
+    await expect(page.locator("#answer-feedback")).toContainText(
+      "To‘g‘ri javob!",
+    );
+    await next(page);
+    await page
+      .getByRole("button", { name: "Bosh ekranga", exact: true })
+      .last()
+      .click();
+    await start(page, "cloze");
+    await expect(page.locator(".question-instruction")).toHaveText(
+      fixture.translation,
+    );
+    await expect(page.locator(".original-sentence")).toHaveCount(0);
+    await answer(page, fixture.cloze);
+    await expect(page.locator("#answer-feedback")).toContainText(
+      "To‘g‘ri javob!",
+    );
+    const before = await stored(page);
+    await page.reload();
+    await page
+      .getByRole("button", { name: "Davom ettirish", exact: true })
+      .click();
+    await expect(page.locator("#answer-feedback")).toContainText(
+      "To‘g‘ri javob!",
+    );
+    await page.getByRole("button", { name: "Yordamchi menyu" }).click();
+    const download = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: "So‘zlar va tarixni eksport qilish" })
+      .click();
+    const file = await download;
+    const backup = await readFile((await file.path())!, "utf8");
+    expect(JSON.parse(backup).data).toEqual(before);
+    await page.getByRole("button", { name: "Yordamchi menyu" }).click();
+    const chooser = page.waitForEvent("filechooser");
+    await page
+      .getByRole("button", { name: "Zaxiradan tiklash", exact: true })
+      .click();
+    await (
+      await chooser
+    ).setFiles({
+      name: "backup.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(backup),
+    });
+    dialog = page.getByRole("dialog", {
+      name: "Zaxiradan tiklash",
+      exact: true,
+    });
+    await dialog
+      .getByRole("button", { name: "Almashtirib tiklash", exact: true })
+      .click();
+    await expect(dialog).toBeHidden();
+    expect(await stored(page)).toEqual(before);
+  });
+}
+
+test("resuming an old case-error feedback preserves history and explains the changed rule", async ({
+  page,
+}) => {
+  await importWords(page, [
+    {
+      word: "die Informatik",
+      translation: "informatika",
+      partOfSpeech: "noun",
+    },
+  ]);
+  await start(page);
+  await answer(page, "die informatik");
+  const legacy = await stored(page);
+  legacy.history[0].correct = false;
+  legacy.session!.results[0].correct = false;
+  legacy.session!.feedback!.correct = false;
+  legacy.words[0].schedules.translation.stage = 0;
+  legacy.session!.queue.push({
+    id: legacy.session!.queue[0].id + "-retry",
+    wordId: legacy.words[0].id,
+    isRetry: true,
+  });
+  await page.getByRole("button", { name: "Yordamchi menyu" }).click();
+  const chooser = page.waitForEvent("filechooser");
+  await page
+    .getByRole("button", { name: "Zaxiradan tiklash", exact: true })
+    .click();
+  await (
+    await chooser
+  ).setFiles({
+    name: "old-rules.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        backupVersion: 1,
+        exportedAt: new Date().toISOString(),
+        data: legacy,
+      }),
+    ),
+  });
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Almashtirib tiklash", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Davom ettirish", exact: true })
+    .click();
+  await expect(page.locator("#answer-feedback")).toContainText(
+    "Oldingi qoidalar bo‘yicha tekshirilgan",
+  );
+  await expect(page.locator("#answer-feedback")).toContainText(
+    "Endi katta-kichik harf farqi xato hisoblanmaydi",
+  );
+  expect((await stored(page)).history[0].correct).toBe(false);
+  await next(page);
+  await answer(page, "DIE INFORMATIK");
+  await expect(page.locator("#answer-feedback")).toContainText(
+    "To‘g‘ri javob!",
+  );
+  const after = await stored(page);
+  expect(after.history).toHaveLength(2);
+  expect(after.history[1].correct).toBe(true);
+});

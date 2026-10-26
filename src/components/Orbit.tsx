@@ -113,8 +113,8 @@ export default function Orbit({
             yangi bir <span>olam.</span>
           </h1>
           <p className="hero-description">
-            Nemischa va inglizcha so‘zlaringizni bir joyga yig‘ing. Yozing,
-            eslang va o‘z orbitangizni kengaytiring.
+            Nemischa, inglizcha va ruscha so‘zlaringizni bir joyga yig‘ing.
+            Yozing, eslang va o‘z orbitangizni kengaytiring.
           </p>
           <div className="hero-actions">
             <button

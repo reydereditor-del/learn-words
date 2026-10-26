@@ -246,7 +246,7 @@ export default function CollectionDialog({
           <div className="form-grid">
             {(
               [
-                ["word", "So‘z", "Artikl va bosh harf bilan"],
+                ["word", "So‘z", "So‘zning to‘g‘ri yozilishi"],
                 ["translation", "O‘zbekcha tarjima", "Aniq ma’nosi"],
                 ["partOfSpeech", "So‘z turkumi", "noun, verb, adjective…"],
               ] as const

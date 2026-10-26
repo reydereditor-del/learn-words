@@ -78,7 +78,9 @@ export default function Practice({
     const release = (event: KeyboardEvent) => {
       if (event.key === "Enter") enterHeld.current = false;
     };
-    const reset = () => { enterHeld.current = false; };
+    const reset = () => {
+      enterHeld.current = false;
+    };
     window.addEventListener("keyup", release);
     window.addEventListener("blur", reset);
     return () => {
@@ -370,6 +372,8 @@ export default function Practice({
   const checked = feedback
     ? checkAnswer(feedback.answer, word, mode, language)
     : null;
+  const previousRuleVerdict =
+    !!feedback && !feedback.correct && !!checked?.correct && !session.revealed;
   const expected =
     mode === "cloze"
       ? (word.clozeAnswers?.[0] ?? word.word)
@@ -446,7 +450,7 @@ export default function Practice({
           <p className="question-instruction">
             {mode === "cloze"
               ? word.sentenceTranslation
-              : `${LANGUAGE_NAMES[language]} javobni yozing${language === "de" && word.partOfSpeech === "noun" ? ". Artikl va bosh harfga e’tibor bering." : "."}`}
+              : `${LANGUAGE_NAMES[language]} javobni yozing${language === "de" && word.partOfSpeech === "noun" ? ". Artiklga e’tibor bering." : "."}`}
           </p>
           <form
             className="answer-form"
@@ -467,7 +471,8 @@ export default function Practice({
                 value={draft}
                 onChange={(event) => updateDraft(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+                  if (event.key !== "Enter" || event.nativeEvent.isComposing)
+                    return;
                   if (event.repeat || enterHeld.current || busyRef.current) {
                     event.preventDefault();
                     return;
@@ -495,9 +500,15 @@ export default function Practice({
                 </span>
               )}
             </div>
-            {language === "de" && !feedback && (
-              <div className="character-row" aria-label="Nemischa harflar">
-                {["ä", "ö", "ü", "ß", "Ä", "Ö", "Ü", "ẞ"].map((character) => (
+            {(language === "de" || language === "ru") && !feedback && (
+              <div
+                className="character-row"
+                aria-label={`${LANGUAGE_NAMES[language]} harflar`}
+              >
+                {(language === "de"
+                  ? ["ä", "ö", "ü", "ß", "Ä", "Ö", "Ü", "ẞ"]
+                  : ["ё", "Ё"]
+                ).map((character) => (
                   <button
                     key={character}
                     className="character-key"
@@ -551,13 +562,15 @@ export default function Practice({
                     <X size={21} />
                   )}
                   <strong>
-                    {feedback.correct
-                      ? feedback.assisted
-                        ? "To‘g‘ri, yordam bilan."
-                        : "To‘g‘ri javob!"
-                      : session.revealed
-                        ? "Javob ochildi"
-                        : "Bu safar xato. Yana mashq qilamiz."}
+                    {previousRuleVerdict
+                      ? "Oldingi qoidalar bo‘yicha tekshirilgan"
+                      : feedback.correct
+                        ? feedback.assisted
+                          ? "To‘g‘ri, yordam bilan."
+                          : "To‘g‘ri javob!"
+                        : session.revealed
+                          ? "Javob ochildi"
+                          : "Bu safar xato. Yana mashq qilamiz."}
                   </strong>
                 </div>
                 {!feedback.correct && (
@@ -565,7 +578,9 @@ export default function Practice({
                     <p>
                       {session.revealed
                         ? "Javobni ko‘rish ham o‘rganishning bir qismi. So‘z yana takrorlashga qaytadi."
-                        : checked?.message}
+                        : previousRuleVerdict
+                          ? "Bu javob oldingi qoidalar bilan xato deb saqlangan. Endi katta-kichik harf farqi xato hisoblanmaydi. Oldingi tarix saqlangan."
+                          : checked?.message}
                     </p>
                     <div className="answer-comparison">
                       <div>
@@ -583,7 +598,8 @@ export default function Practice({
                                   className={
                                     Array.from(checked?.expected ?? expected)[
                                       index
-                                    ] !== character
+                                    ]?.toLocaleLowerCase(language) !==
+                                    character.toLocaleLowerCase(language)
                                       ? "different-character"
                                       : undefined
                                   }

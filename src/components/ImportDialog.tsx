@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Modal from "./Modal";
 import type { AppData, Language, Level, WordContent } from "../lib/types";
-import { LANGUAGE_NAMES, LEVELS } from "../lib/types";
+import { LANGUAGES, LANGUAGE_NAMES, LEVELS } from "../lib/types";
 import {
   applyImport,
   buildPrompt,
@@ -290,8 +290,11 @@ export default function ImportDialog({ data, onClose, onSave }: Props) {
                       )
                     }
                   >
-                    <option value="de">Nemischa</option>
-                    <option value="en">Inglizcha</option>
+                    {LANGUAGES.map((code) => (
+                      <option key={code} value={code}>
+                        {LANGUAGE_NAMES[code]}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label className="field">

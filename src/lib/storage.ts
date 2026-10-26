@@ -1,4 +1,4 @@
-import { emptyData, LEVELS } from "./types";
+import { emptyData, LANGUAGES, LEVELS } from "./types";
 import type { AppData } from "./types";
 
 export const STORAGE_DATABASE = "soz-orbitasi";
@@ -168,7 +168,7 @@ export function validateBackup(input: unknown): AppData {
     ]);
     unique(text(collection.id, `${path}.id`), collectionIds, `${path}.id`);
     text(collection.title, `${path}.title`);
-    choice(collection.language, `${path}.language`, ["de", "en"]);
+    choice(collection.language, `${path}.language`, LANGUAGES);
     choice(collection.level, `${path}.level`, LEVELS);
     numeric(collection.createdAt, `${path}.createdAt`);
   });

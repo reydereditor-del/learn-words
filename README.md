@@ -1,6 +1,6 @@
 # So‘z Orbitasi
 
-Nemischa va inglizcha so‘zlarni o‘zbekcha interfeysda o‘rganish uchun brauzer ilovasi. React, TypeScript va Vite. Backend, login, tashqi AI/API yoki oldindan yuklangan lug‘at yo‘q.
+Nemischa, inglizcha va ruscha so‘zlarni o‘zbekcha interfeysda o‘rganish uchun brauzer ilovasi. React, TypeScript va Vite. Backend, login, tashqi AI/API yoki oldindan yuklangan lug‘at yo‘q.
 
 ## Ishga tushirish
 
@@ -34,7 +34,7 @@ npm run test:e2e
 4. Qatorlarni tekshiring yoki tahrirlang. Takroriy so‘zlarni o‘tkazib yuboring yoki tarixini saqlagan holda yangilang.
 5. Tarjimadan yozish yoki gapdagi bo‘shliq mashqini boshlang.
 
-So‘z va tarjima majburiy. Gap mashqiga `sentence`, `sentenceTranslation`, aynan bitta `{{blank}}` markerli `clozeText` va kamida bitta `clozeAnswers` javobi kerak. Yetarli ma’lumot bo‘lmasa so‘z tarjima mashqida qoladi. Faqat saqlangan aniq javoblar qabul qilinadi; umlaut, ß, artikl va bosh harf farqlari tushuntiriladi.
+So‘z va tarjima majburiy. Gap mashqiga `sentence`, `sentenceTranslation`, aynan bitta `{{blank}}` markerli `clozeText` va kamida bitta `clozeAnswers` javobi kerak. Yetarli ma’lumot bo‘lmasa so‘z tarjima mashqida qoladi. Saqlangan javoblar katta-kichik harfni farqlamasdan tekshiriladi. Artikl, umlaut, ß va boshqa harf farqlari saqlanadi; noaniq o‘xshash javoblar avtomatik to‘g‘ri hisoblanmaydi.
 
 Takrorlash 1, 3, 7, 14 va 30 kunlik intervallarda ishlaydi. Faqat birinchi mustaqil to‘g‘ri javob bosqichni oshiradi. Yordam va “qiynaldim” bosqichni oshirmaydi; xato va javobni ochish bosqichni qayta boshlaydi. Tarjima va gap mashqi jadvallari alohida. Raunddagi xatolar cheklangan marta qaytadi.
 
@@ -78,3 +78,5 @@ Bitta faylli build Chromium’da HTTP orqali tekshirildi: tashqi resurslarsiz oc
 1.0.3 tuzatishi: sichqonchaning diskret scroll qadamlariga to‘g‘ridan-to‘g‘ri sakrash o‘rniga, vaqtga bog‘liq `requestAnimationFrame` yumshatishi qo‘llanadi. Kadrlar faqat transform/opacity’ni yangilaydi; butun React orbita komponenti har kadrda qayta render qilinmaydi. Harakat tugaganda kadr sikli to‘xtaydi, kamaytirilgan animatsiyada esa statik ko‘rinish saqlanadi. Bitta wheel qadamidan keyingi oraliq kadrlar brauzer testida tekshiriladi.
 
 1.0.4: fon `#111315`, to‘plam kartalari `#1C2024`, yordamchi matnlar `#A9B1BA`; elektr yashil `#BDFF62` asosiy amallar va faol holatlar uchun saqlandi. To‘plamlar ko‘rinish maydoniga kirganda bir marta 12 px yengil ko‘tarilib ochiladi. Tanlangan karta → to‘plam → mashq o‘tishida 220 ms shared-surface animatsiyasi mavjud. View Transitions qo‘llanmasa yoki animatsiya kamaytirilgan bo‘lsa, oddiy ishlaydigan o‘tish saqlanadi. Mashq ichidagi savol va input uchun doimiy harakat qo‘shilmagan.
+
+1.1.0: nemischa, inglizcha va ruscha import, filtrlar, yozma/gap mashqlari va zaxira qo‘llanadi. Javoblar katta-kichik harfdan qat’i nazar qabul qilinadi (`die Informatik` = `die informatik`), lekin artikl, umlaut, ß va ruscha ё/е farqlari saqlanadi. Ruscha prompt kirill yozuvidagi so‘zlarni tayyorlaydi; mashqda ё/Ё kiritish tugmalari bor. Oldingi tarix qayta yozilmaydi; eski qoidalar bilan xato saqlangan ochiq javoblar uchun tushuntirish ko‘rsatiladi.

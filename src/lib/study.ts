@@ -20,7 +20,7 @@ export function normalizeAnswer(answer: string): string {
 
 export interface AnswerResult {
   correct: boolean;
-  kind: "correct" | "article" | "capitalization" | "spelling" | "different";
+  kind: "correct" | "article" | "spelling" | "different";
   message: string;
   expected: string;
   received: string;
@@ -70,7 +70,11 @@ export function checkAnswer(
         : [word.word];
   const accepted = saved.map(normalizeAnswer).filter(Boolean);
   const expected = accepted[0] ?? "";
-  const exact = accepted.find((candidate) => candidate === received);
+  const comparisonKey = (value: string) => value.toLocaleLowerCase(language);
+  const receivedKey = comparisonKey(received);
+  const exact = accepted.find(
+    (candidate) => comparisonKey(candidate) === receivedKey,
+  );
   if (exact !== undefined)
     return {
       correct: true,
@@ -104,26 +108,14 @@ export function checkAnswer(
           actualParts.article.toLocaleLowerCase("de") !==
           expectedParts.article.toLocaleLowerCase("de")
         ) {
-          const capitalNote =
-            actualParts.noun !== expectedParts.noun
-              ? " Otning bosh harfiga ham e’tibor bering."
-              : "";
           return {
             correct: false,
             kind: "article",
-            message: `Artikl ${actualParts.article ? "noto‘g‘ri" : "yozilmagan"}. Saqlangan javob: “${candidate}”.${capitalNote}`,
+            message: `Artikl ${actualParts.article ? "noto‘g‘ri" : "yozilmagan"}. Saqlangan javob: “${candidate}”.`,
             expected: candidate,
             received,
           };
         }
-        if (received !== candidate)
-          return {
-            correct: false,
-            kind: "capitalization",
-            message: `Bosh yoki kichik harf xatosi. Nemischa ot bosh harf bilan yoziladi: “${candidate}”.`,
-            expected: candidate,
-            received,
-          };
       }
     }
   }
@@ -131,7 +123,7 @@ export function checkAnswer(
   let nearest = expected;
   let nearestDistance = Number.POSITIVE_INFINITY;
   for (const candidate of accepted) {
-    const amount = distance(received, candidate);
+    const amount = distance(receivedKey, comparisonKey(candidate));
     if (amount < nearestDistance) {
       nearestDistance = amount;
       nearest = candidate;
@@ -146,7 +138,7 @@ export function checkAnswer(
     received,
     expected: nearest,
     message: spelling
-      ? `Yozuvda farq bor. “${received}” o‘rniga “${nearest}”. Harflar, umlaut va ß alohida hisoblanadi.`
+      ? `Yozuvda farq bor. “${received}” o‘rniga “${nearest}”. Katta-kichik harf hisobga olinmaydi; boshqa harf farqlari alohida hisoblanadi.`
       : `Bu savol uchun saqlangan javobga mos kelmadi. To‘g‘ri javob: “${nearest}”.`,
   };
 }

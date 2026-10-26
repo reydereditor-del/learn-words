@@ -18,8 +18,8 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import type { AppData, StudyMode } from "./lib/types";
-import { LANGUAGE_NAMES } from "./lib/types";
+import type { AppData, Language, StudyMode } from "./lib/types";
+import { LANGUAGES, LANGUAGE_NAMES } from "./lib/types";
 import {
   loadData,
   parseBackup,
@@ -61,7 +61,7 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [filter, setFilter] = useState<"all" | "de" | "en">("all");
+  const [filter, setFilter] = useState<"all" | Language>("all");
   const [restore, setRestore] = useState<AppData | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [notice, setNotice] = useState("");
@@ -466,7 +466,7 @@ export default function App() {
             )}
             <div className="library-toolbar">
               <div className="filter-tabs" aria-label="To‘plam tilini tanlash">
-                {(["all", "de", "en"] as const).map((f) => (
+                {(["all", ...LANGUAGES] as const).map((f) => (
                   <button
                     key={f}
                     className={filter === f ? "selected" : ""}
@@ -544,7 +544,7 @@ export default function App() {
                       >
                         <div className="collection-card-top">
                           <span className={`language-chip ${c.language}`}>
-                            <span>{c.language === "de" ? "DE" : "EN"}</span>
+                            <span>{c.language.toUpperCase()}</span>
                             {LANGUAGE_NAMES[c.language]}
                             <span className="chip-divider" />
                             {c.level}
