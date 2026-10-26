@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ArrowDown, ArrowUpRight, Plus, Sparkle } from "lucide-react";
 import type { AppData } from "../lib/types";
 import { wordIsDue } from "../lib/stats";
-import { orbitPose } from "../lib/orbit";
+import { orbitPose, smoothOrbitProgress } from "../lib/orbit";
 interface Props {
   data: AppData;
   reduced: boolean;
@@ -18,45 +18,83 @@ export default function Orbit({
   onEnableMotion,
 }: Props) {
   const ref = useRef<HTMLElement>(null);
-  const [progress, setProgress] = useState(0);
-  useEffect(() => {
-    if (reduced) return;
-    let frame = 0;
-    const update = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const rect = ref.current?.getBoundingClientRect();
-        if (rect)
-          setProgress(
-            Math.max(
-              0,
-              Math.min(
-                1,
-                -rect.top /
-                  Math.max(
-                    1,
-                    rect.height -
-                      (ref.current
-                        ?.querySelector(".orbit-sticky")
-                        ?.getBoundingClientRect().height ?? window.innerHeight),
-                  ),
-              ),
-            ),
-          );
-      });
-    };
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    update();
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, [reduced]);
+  const progress = useRef(0);
   const cards = data.words.slice(0, 6);
   const amount = cards.length || 6;
-  const p = reduced ? 0 : progress;
+  const cardIdentity = cards.map((word) => word.id).join("|");
+  useEffect(() => {
+    const scene = ref.current;
+    if (!scene) return;
+    const sticky = scene.querySelector<HTMLElement>(".orbit-sticky")!;
+    const group = scene.querySelector<HTMLElement>(".orbit-cards")!;
+    const nodes = Array.from(
+      scene.querySelectorAll<HTMLElement>(".orbit-card"),
+    );
+    const ringOne = scene.querySelector<HTMLElement>(".ring-one")!;
+    const ringTwo = scene.querySelector<HTMLElement>(".ring-two")!;
+    const axis = scene.querySelector<HTMLElement>(".orbit-axis")!;
+    const core = scene.querySelector<HTMLElement>(".orbit-core")!;
+    let frame: number | null = null;
+    let target = progress.current;
+    let previousTime = 0;
+    const paint = (value: number) => {
+      progress.current = value;
+      const assembly = orbitPose(0, value).assembly;
+      group.style.transform = `rotateY(${value * 40}deg)`;
+      nodes.forEach((node, i) => {
+        const pose = orbitPose(i, value);
+        node.style.transform = `translate3d(${pose.x}px, ${pose.y}px, ${pose.z}px) rotateY(${pose.rotateY}deg) rotateZ(${pose.rotateZ}deg)`;
+        node.style.opacity = String(
+          i >= 4 && value > 0.5 ? 1 - (value - 0.5) * 0.25 : 1,
+        );
+      });
+      ringOne.style.opacity = ringTwo.style.opacity = String(1 - assembly);
+      ringOne.style.transform = `rotateX(66deg) rotateY(${-18 + value * 100}deg)`;
+      ringTwo.style.transform = `rotateY(68deg) rotateX(${28 + value * 80}deg)`;
+      axis.style.opacity = core.style.opacity = String(1 - value);
+      core.style.transform = `translate(-50%, -50%) scale(${1 - value * 0.8})`;
+    };
+    if (reduced) {
+      paint(0);
+      return;
+    }
+    const tick = (now: number) => {
+      frame = null;
+      paint(smoothOrbitProgress(progress.current, target, now - previousTime));
+      previousTime = now;
+      if (progress.current !== target) frame = requestAnimationFrame(tick);
+    };
+    const measure = () => {
+      const rect = scene.getBoundingClientRect();
+      target = Math.max(
+        0,
+        Math.min(
+          1,
+          -rect.top /
+            Math.max(1, rect.height - sticky.getBoundingClientRect().height),
+        ),
+      );
+      // Keep an existing frame loop alive; wheel events only change its target.
+      if (frame === null && progress.current !== target) {
+        previousTime = performance.now();
+        frame = requestAnimationFrame(tick);
+      }
+    };
+    paint(progress.current);
+    window.addEventListener("scroll", measure, { passive: true });
+    window.addEventListener("resize", measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(scene);
+    observer.observe(sticky);
+    measure();
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", measure);
+      window.removeEventListener("resize", measure);
+      observer.disconnect();
+    };
+  }, [reduced, cardIdentity]);
+  const p = reduced ? 0 : progress.current;
   const assembly = orbitPose(0, p).assembly;
   const due = data.words.filter((w) => wordIsDue(w, Date.now())).length;
   return (

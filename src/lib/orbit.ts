@@ -22,9 +22,26 @@ export function orbitPose(index: number, progress: number) {
       (pos.y + (Math.sin(angle + index * 0.8) - Math.sin(index * 0.8)) * 22) *
         (1 - blend) +
       (Math.floor(index / 3) - 0.5) * 110 * blend,
-    z: blend === 1 ? 0 : (-pos.x * Math.sin(angle) + pos.z * Math.cos(angle)) * (1 - blend),
+    z:
+      blend === 1
+        ? 0
+        : (-pos.x * Math.sin(angle) + pos.z * Math.cos(angle)) * (1 - blend),
     rotateY: (-18 + index * 8 + Math.sin(angle) * 25) * (1 - blend) - 40 * p,
     rotateZ: blend === 1 ? 0 : pos.r * (1 - blend),
     assembly: blend,
   };
+}
+
+/** Time-based damping fills the gaps between coarse mouse-wheel events. */
+export function smoothOrbitProgress(
+  current: number,
+  target: number,
+  elapsedMs: number,
+): number {
+  const destination = Math.max(0, Math.min(1, target));
+  const next =
+    current +
+    (destination - current) *
+      (1 - Math.exp(-Math.max(0, Math.min(64, elapsedMs)) / 85));
+  return Math.abs(destination - next) < 0.0001 ? destination : next;
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { orbitPose } from "../src/lib/orbit";
+import { orbitPose, smoothOrbitProgress } from "../src/lib/orbit";
 describe("scroll orbit geometry", () => {
   it("starts in the existing orbit and assembles into actual rows", () => {
     expect(orbitPose(0, 0)).toMatchObject({
@@ -32,5 +32,28 @@ describe("scroll orbit geometry", () => {
         expect(Object.values(pose).every(Number.isFinite)).toBe(true);
         expect(orbitPose(i, p)).toEqual(pose);
       }
+  });
+});
+
+describe("frame-based scroll smoothing", () => {
+  it("interpolates forward and backward without overshoot", () => {
+    expect(smoothOrbitProgress(0, 1, 16)).toBeGreaterThan(0);
+    expect(smoothOrbitProgress(0, 1, 16)).toBeLessThan(0.3);
+    expect(smoothOrbitProgress(0.8, 0, 16)).toBeGreaterThan(0);
+    expect(smoothOrbitProgress(0.8, 0, 16)).toBeLessThan(0.8);
+  });
+  it("uses elapsed time rather than assuming a particular display refresh rate", () => {
+    let a = 0,
+      b = 0;
+    for (let i = 0; i < 10; i++) a = smoothOrbitProgress(a, 1, 16);
+    for (let i = 0; i < 20; i++) b = smoothOrbitProgress(b, 1, 8);
+    expect(a).toBeCloseTo(b, 10);
+  });
+  it("settles exactly so the animation loop can stop when scrolling stops", () => {
+    let p = 0;
+    for (let i = 0; i < 100; i++) p = smoothOrbitProgress(p, 1, 16);
+    expect(p).toBe(1);
+    for (let i = 0; i < 100; i++) p = smoothOrbitProgress(p, 0, 16);
+    expect(p).toBe(0);
   });
 });

@@ -209,6 +209,26 @@ test("scroll changes actual 3D cards, collects them, and reverses to the origina
   const initialGroup = await group.getAttribute("style");
   await page.evaluate(() => window.scrollTo({ top: 300, behavior: "instant" }));
   await expect.poll(() => group.getAttribute("style")).not.toBe(initialGroup);
+  // Capture the settled pose, rather than one transient smoothing frame.
+  await page.waitForFunction(() => {
+    const scene = document
+      .querySelector(".orbit-section")!
+      .getBoundingClientRect();
+    const sticky = document
+      .querySelector(".orbit-sticky")!
+      .getBoundingClientRect();
+    const target =
+      Math.max(
+        0,
+        Math.min(1, -scene.top / Math.max(1, scene.height - sticky.height)),
+      ) * 40;
+    const angle = parseFloat(
+      (
+        document.querySelector(".orbit-cards") as HTMLElement
+      ).style.transform.slice(8),
+    );
+    return Math.abs(angle - target) < 0.00002;
+  });
   const forward = await card.evaluate(
     (element) => getComputedStyle(element).transform,
   );
@@ -289,4 +309,41 @@ test("visible static-orbit notice can directly enable full animation", async ({
       .locator(".orbit-sticky")
       .evaluate((el) => getComputedStyle(el).position),
   ).toBe("sticky");
+});
+
+test("one wheel step produces intermediate animation frames instead of one pose jump", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await ready(page);
+  await page.mouse.move(1000, 400);
+  await page.evaluate(() => {
+    const data = { transforms: [] as string[], done: false };
+    Object.assign(window, { orbitFrameSample: data });
+    const start = performance.now();
+    function sample() {
+      data.transforms.push(
+        (document.querySelector(".orbit-card-0") as HTMLElement).style
+          .transform,
+      );
+      if (performance.now() - start < 400) requestAnimationFrame(sample);
+      else data.done = true;
+    }
+    requestAnimationFrame(sample);
+  });
+  await page.mouse.wheel(0, 120);
+  await page.waitForFunction(
+    () =>
+      (window as unknown as { orbitFrameSample: { done: boolean } })
+        .orbitFrameSample.done,
+  );
+  const samples = await page.evaluate(
+    () =>
+      (window as unknown as { orbitFrameSample: { transforms: string[] } })
+        .orbitFrameSample.transforms,
+  );
+  expect(
+    new Set(samples).size,
+    "A single wheel impulse must render multiple intermediate poses",
+  ).toBeGreaterThan(8);
 });
