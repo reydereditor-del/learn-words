@@ -35,6 +35,8 @@ import Modal from "./components/Modal";
 import ImportDialog from "./components/ImportDialog";
 import Practice from "./components/Practice";
 import CollectionDialog from "./components/CollectionDialog";
+import Reveal from "./components/Reveal";
+import { useSurfaceTransition } from "./hooks/useSurfaceTransition";
 function Logo({ small = false }: { small?: boolean }) {
   return (
     <span className={`brand ${small ? "brand-small" : ""}`}>
@@ -133,11 +135,20 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "instant" });
   }
   function requestPractice(collectionId?: string) {
-    if (collectionId) setSelected(null);
-    setPracticeCollection(collectionId ?? "all");
-    setDialog("practice");
-    setReplaceSession(false);
-    setStartError("");
+    const update = () => {
+      if (collectionId) setSelected(null);
+      setPracticeCollection(collectionId ?? "all");
+      setDialog("practice");
+      setReplaceSession(false);
+      setStartError("");
+    };
+    if (collectionId)
+      surfaceTransition(
+        document.querySelector<HTMLElement>(".modal"),
+        update,
+        ".modal",
+      );
+    else update();
   }
   const [practiceCollection, setPracticeCollection] = useState("all");
   const [mode, setMode] = useState<StudyMode>("translation");
@@ -169,9 +180,15 @@ export default function App() {
       return;
     }
     if (await commit({ ...data, session: nextSession })) {
-      setDialog(null);
-      setView("practice");
-      window.scrollTo({ top: 0, behavior: "instant" });
+      surfaceTransition(
+        document.querySelector<HTMLElement>(".modal"),
+        () => {
+          setDialog(null);
+          setView("practice");
+          window.scrollTo({ top: 0, behavior: "instant" });
+        },
+        ".practice-content",
+      );
     }
     setStarting(false);
   }
@@ -211,6 +228,7 @@ export default function App() {
     ? shouldReduceMotion(data.preferences, osReduced)
     : osReduced;
   const fullMotion = data?.preferences.motionOverride === "full";
+  const surfaceTransition = useSurfaceTransition(reduced);
   useEffect(() => {
     document.documentElement.dataset.motion = fullMotion ? "full" : "system";
     return () => {
@@ -472,32 +490,34 @@ export default function App() {
               </span>
             </div>
             {!data.collections.length ? (
-              <div className="empty-library">
-                <div className="empty-stack" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span>
-                    <Plus size={25} />
+              <Reveal reduced={reduced}>
+                <div className="empty-library">
+                  <div className="empty-stack" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span>
+                      <Plus size={25} />
+                    </span>
+                  </div>
+                  <div>
+                    <h3>Hali so‘z qo‘shilmagan</h3>
+                    <p>
+                      Birinchi to‘plamingiz shu yerdan boshlanadi.
+                      <br />
+                      Tayyorlagan so‘zlaringizni JSON orqali import qiling.
+                    </p>
+                  </div>
+                  <button
+                    className="text-button green"
+                    onClick={() => setDialog("import")}
+                  >
+                    So‘zlarni import qilish <ArrowRight size={17} />
+                  </button>
+                  <span className="empty-grid-number" aria-hidden="true">
+                    01
                   </span>
                 </div>
-                <div>
-                  <h3>Hali so‘z qo‘shilmagan</h3>
-                  <p>
-                    Birinchi to‘plamingiz shu yerdan boshlanadi.
-                    <br />
-                    Tayyorlagan so‘zlaringizni JSON orqali import qiling.
-                  </p>
-                </div>
-                <button
-                  className="text-button green"
-                  onClick={() => setDialog("import")}
-                >
-                  So‘zlarni import qilish <ArrowRight size={17} />
-                </button>
-                <span className="empty-grid-number" aria-hidden="true">
-                  01
-                </span>
-              </div>
+              </Reveal>
             ) : filtered.length ? (
               <div className="collection-grid">
                 {filtered.map((c, i) => {
@@ -507,57 +527,70 @@ export default function App() {
                   const d = words.filter((w) => wordIsDue(w, now)).length;
                   const n = words.filter(wordIsNew).length;
                   return (
-                    <button
+                    <Reveal
                       key={c.id}
-                      className="collection-card"
-                      onClick={() => setSelected(c.id)}
+                      reduced={reduced}
+                      delay={Math.min((i % 3) * 35, 70)}
                     >
-                      <div className="collection-card-top">
-                        <span className={`language-chip ${c.language}`}>
-                          <span>{c.language === "de" ? "DE" : "EN"}</span>
-                          {LANGUAGE_NAMES[c.language]}
-                          <span className="chip-divider" />
-                          {c.level}
-                        </span>
-                        <span className="card-index">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                      </div>
-                      <div className="deck-illustration" aria-hidden="true">
-                        <i />
-                        <i />
-                        <i>
-                          <Layers3 size={24} />
-                        </i>
-                      </div>
-                      <h3>{c.title}</h3>
-                      <p>
-                        {words.length} ta so‘z <span>·</span>{" "}
-                        {words.filter(isClozeEligible).length} ta gap
-                      </p>
-                      <div className="collection-card-footer">
-                        <span>
-                          {d
-                            ? `${d} ta takrorlash`
-                            : n
-                              ? `${n} ta yangi so‘z`
-                              : "Hozircha takrorlash yo‘q"}
-                        </span>
-                        <ArrowRight size={18} />
-                      </div>
-                    </button>
+                      <button
+                        className="collection-card"
+                        onClick={(event) =>
+                          surfaceTransition(
+                            event.currentTarget,
+                            () => setSelected(c.id),
+                            ".modal",
+                          )
+                        }
+                      >
+                        <div className="collection-card-top">
+                          <span className={`language-chip ${c.language}`}>
+                            <span>{c.language === "de" ? "DE" : "EN"}</span>
+                            {LANGUAGE_NAMES[c.language]}
+                            <span className="chip-divider" />
+                            {c.level}
+                          </span>
+                          <span className="card-index">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                        </div>
+                        <div className="deck-illustration" aria-hidden="true">
+                          <i />
+                          <i />
+                          <i>
+                            <Layers3 size={24} />
+                          </i>
+                        </div>
+                        <h3>{c.title}</h3>
+                        <p>
+                          {words.length} ta so‘z <span>·</span>{" "}
+                          {words.filter(isClozeEligible).length} ta gap
+                        </p>
+                        <div className="collection-card-footer">
+                          <span>
+                            {d
+                              ? `${d} ta takrorlash`
+                              : n
+                                ? `${n} ta yangi so‘z`
+                                : "Hozircha takrorlash yo‘q"}
+                          </span>
+                          <ArrowRight size={18} />
+                        </div>
+                      </button>
+                    </Reveal>
                   );
                 })}
-                <button
-                  className="add-collection-card"
-                  onClick={() => setDialog("import")}
-                >
-                  <span>
-                    <Plus size={26} />
-                  </span>
-                  <strong>Yangi orbita yarating</strong>
-                  <p>O‘z so‘zlaringizdan yangi to‘plam</p>
-                </button>
+                <Reveal reduced={reduced}>
+                  <button
+                    className="add-collection-card"
+                    onClick={() => setDialog("import")}
+                  >
+                    <span>
+                      <Plus size={26} />
+                    </span>
+                    <strong>Yangi orbita yarating</strong>
+                    <p>O‘z so‘zlaringizdan yangi to‘plam</p>
+                  </button>
+                </Reveal>
               </div>
             ) : (
               <div className="filtered-empty">

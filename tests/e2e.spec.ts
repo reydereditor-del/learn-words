@@ -667,23 +667,176 @@ test("large user collection is retained while orbit and round sizes stay bounded
   await expect(page.locator(".practice-count")).toContainText("1 / 10");
 });
 
-test("a separate Enter immediately after feedback advances without an arbitrary delay", async ({ page }) => {
+test("a separate Enter immediately after feedback advances without an arbitrary delay", async ({
+  page,
+}) => {
   await importWords(page, [today, table]);
   await start(page);
   await page.getByLabel("Javobingiz", { exact: true }).fill("heute");
   await page.keyboard.press("Enter");
-  await expect(page.locator("#answer-feedback")).toContainText("To‘g‘ri javob!");
+  await expect(page.locator("#answer-feedback")).toContainText(
+    "To‘g‘ri javob!",
+  );
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("heading", { name: "stol", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "stol", exact: true }),
+  ).toBeVisible();
   expect((await stored(page)).history).toHaveLength(1);
 });
 
-test("a next-button click immediately after saved feedback advances on its first click", async ({ page }) => {
+test("a next-button click immediately after saved feedback advances on its first click", async ({
+  page,
+}) => {
   await importWords(page, [today, table]);
   await start(page);
   await page.getByLabel("Javobingiz", { exact: true }).fill("heute");
   await page.getByRole("button", { name: "Tekshirish", exact: true }).click();
   await expect(page.locator("#answer-feedback")).toBeVisible();
-  await page.getByRole("button", { name: "Keyingi savol", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "stol", exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Keyingi savol", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "stol", exact: true }),
+  ).toBeVisible();
 });
+
+test("collection cards reveal gently when scrolled into view and use the neutral palette", async ({
+  page,
+}) => {
+  await importWords(page, [today]);
+  const wrapper = page
+    .locator(".collection-reveal")
+    .filter({ has: page.locator(".collection-card") })
+    .first();
+  await expect(wrapper).toHaveClass(/reveal-pending/);
+  await page.evaluate(() =>
+    window.scrollTo({
+      top:
+        document.querySelector("#toplamlar")!.getBoundingClientRect().top +
+        scrollY -
+        innerHeight * 0.5,
+      behavior: "instant",
+    }),
+  );
+  await expect(wrapper).toHaveClass(/reveal-entered/);
+  await expect
+    .poll(() => wrapper.evaluate((el) => getComputedStyle(el).opacity))
+    .toBe("1");
+  expect(
+    await page
+      .locator("html")
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe("rgb(17, 19, 21)");
+  expect(
+    await page
+      .locator(".collection-card")
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe("rgb(28, 32, 36)");
+});
+
+test("selected collection surface connects through the dialogs into a stationary practice area", async ({
+  page,
+}) => {
+  await importWords(page, [today]);
+  await page.evaluate(() => {
+    const original = document.startViewTransition.bind(document);
+    Object.assign(window, { sharedSurfaceTargets: [] as string[] });
+    Object.defineProperty(document, "startViewTransition", {
+      configurable: true,
+      value: (update: () => void) =>
+        original(async () => {
+          await update();
+          const target = document.querySelector("[data-surface-transition]");
+          (
+            window as unknown as { sharedSurfaceTargets: string[] }
+          ).sharedSurfaceTargets.push(target?.className || "missing");
+        }),
+    });
+  });
+  await page.locator(".collection-card").click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^Mashq qilish/ })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Mashqni boshlash", exact: true })
+    .click();
+  await expect(page.getByLabel("Javobingiz", { exact: true })).toBeFocused();
+  await expect
+    .poll(() => page.locator("[data-surface-transition]").count())
+    .toBe(0);
+  const targets = await page.evaluate(
+    () =>
+      (window as unknown as { sharedSurfaceTargets: string[] })
+        .sharedSurfaceTargets,
+  );
+  expect(targets).toHaveLength(3);
+  expect(targets[0]).toContain("modal");
+  expect(targets[1]).toContain("modal");
+  expect(targets[2]).toBe("practice-content");
+  expect(
+    await page
+      .locator(".practice-content")
+      .evaluate((el) => getComputedStyle(el).transform),
+  ).toBe("none");
+  await expect(page.locator(".orbit-cards")).toHaveCount(0);
+  await page.getByLabel("Javobingiz", { exact: true }).fill("heute");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#answer-feedback")).toContainText(
+    "To‘g‘ri javob!",
+  );
+});
+
+for (const fallback of ["unsupported", "reduced"] as const) {
+  test(`collection and practice remain usable with ${fallback} transitions`, async ({
+    page,
+  }) => {
+    if (fallback === "reduced")
+      await page.emulateMedia({ reducedMotion: "reduce" });
+    await importWords(page, [today]);
+    await page.evaluate((fallback) => {
+      Object.assign(window, { unexpectedSurfaceTransition: false });
+      if (fallback === "unsupported")
+        Object.defineProperty(document, "startViewTransition", {
+          configurable: true,
+          value: undefined,
+        });
+      else
+        Object.defineProperty(document, "startViewTransition", {
+          configurable: true,
+          value: () => {
+            Object.assign(window, { unexpectedSurfaceTransition: true });
+            throw new Error("Reduced motion must not start a transition");
+          },
+        });
+    }, fallback);
+    if (fallback === "reduced")
+      await expect(
+        page.locator(".collection-reveal.reveal-pending"),
+      ).toHaveCount(0);
+    await page.locator(".collection-card").click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /^Mashq qilish/ })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Mashqni boshlash", exact: true })
+      .click();
+    await expect(page.getByLabel("Javobingiz", { exact: true })).toBeFocused();
+    await page.getByLabel("Javobingiz", { exact: true }).fill("heute");
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#answer-feedback")).toContainText(
+      "To‘g‘ri javob!",
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { unexpectedSurfaceTransition: boolean })
+            .unexpectedSurfaceTransition,
+      ),
+    ).toBe(false);
+  });
+}
